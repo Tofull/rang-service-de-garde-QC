@@ -52,6 +52,10 @@
     .rq-n5 { background:#063665; }
     .rq-n0 { background:#9e9e9e; }
     .rq-vide { color:#777; }
+    th[data-rq] { cursor:pointer; user-select:none; white-space:nowrap; }
+    th[data-rq]:focus-visible { outline:2px solid #095797; outline-offset:-2px; }
+    .rq-fleche { font-size:12px; opacity:.35; }
+    .rq-fleche[data-actif="1"] { opacity:1; color:#095797; }
   `;
 
   /** Résultats de la session courante, indexés par identifiant de demande. */
@@ -214,7 +218,24 @@
         th.className = (modele.className || '').replace(/\btri\b/g, '').replace(/premier-colonne/g, '').trim();
       }
       th.setAttribute('scope', 'col');
-      th.textContent = ENTETE;
+      th.title = 'Trier par indicateur de rang';
+      th.tabIndex = 0;
+      const libelle = document.createElement('span');
+      libelle.textContent = ENTETE;
+      const fleche = document.createElement('span');
+      fleche.className = 'rq-fleche';
+      th.append(libelle, ' ', fleche);
+      // Le clic ne doit pas remonter jusqu'au tri natif du composant.
+      const basculer = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        triRang = triRang === 1 ? -1 : triRang === -1 ? 0 : 1;
+        rendre();
+      };
+      th.addEventListener('click', basculer);
+      th.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') basculer(e);
+      });
       enteteLigne.insertBefore(th, enteteLigne.children[cols.insertion] || null);
     }
     for (const tr of table.querySelectorAll('tbody tr')) {
@@ -291,6 +312,92 @@
     if (etat.getAttribute('data-erreur') !== drapeau) etat.setAttribute('data-erreur', drapeau);
   }
 
+  // ----------------------------------------------------------- tri par rang
+
+  /** 0 = ordre du portail, 1 = meilleurs rangs d'abord, -1 = l'inverse. */
+  let triRang = 0;
+  /** Ordre écrit lors du dernier tri : ce qui s'en écarte vient du portail. */
+  let ordreApplique = [];
+  /** Ordre du portail : base des ex æquo, et retour en arrière quand on éteint. */
+  let baseTri = new Map();
+
+  const memeSequence = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+  /** Poids de tri : 1 à 5 = tranches de la jauge, au-delà = rang non lisible. */
+  function poidsTri(resultat) {
+    if (resultat && resultat.status === 'ok' && resultat.level > 0) return resultat.level;
+    if (!resultat || resultat.status === 'chargement') return 103;
+    if (resultat.status === 'aucun') return 100;
+    if (resultat.status === 'erreur') return 102;
+    return 101;
+  }
+
+  function ecrireOrdre(tbody, actuel, voulu) {
+    if (memeSequence(actuel, voulu)) return;
+    // Un fragment déplace toutes les lignes en une seule mutation.
+    const fragment = document.createDocumentFragment();
+    for (const tr of voulu) fragment.appendChild(tr);
+    tbody.appendChild(fragment);
+  }
+
+  function majEnteteTri(table) {
+    const th = table.querySelector('thead th[data-rq]');
+    const fleche = th?.querySelector('.rq-fleche');
+    if (!th || !fleche) return;
+    const signe = triRang === 1 ? '▲' : triRang === -1 ? '▼' : '⇅';
+    const actif = triRang ? '1' : '0';
+    const aria = triRang === 1 ? 'ascending' : triRang === -1 ? 'descending' : 'none';
+    if (fleche.textContent !== signe) fleche.textContent = signe;
+    if (fleche.getAttribute('data-actif') !== actif) fleche.setAttribute('data-actif', actif);
+    if (th.getAttribute('aria-sort') !== aria) th.setAttribute('aria-sort', aria);
+  }
+
+  /**
+   * Réordonne les <tr> selon le rang relevé.
+   *
+   * Le tri natif du portail ne connaît que ses propres colonnes : il réordonne
+   * `listeDonnees` puis re-rend. On ne peut donc que déplacer les lignes après
+   * coup, et le refaire à chaque rendu — les rangs arrivent au fil de l'eau.
+   */
+  function appliquerTri(table, paires) {
+    const tbody = table.querySelector('tbody');
+    if (!tbody) return;
+    const trs = [...tbody.rows];
+
+    if (!triRang) {
+      if (baseTri.size && trs.every((tr) => baseTri.has(tr))) {
+        ecrireOrdre(tbody, trs, trs.slice().sort((a, b) => baseTri.get(a) - baseTri.get(b)));
+      }
+      baseTri = new Map();
+      ordreApplique = [];
+      return;
+    }
+
+    // Un ordre qui n'est pas celui qu'on a écrit vient du portail (tri natif,
+    // pagination, re-rendu) : il redevient la référence.
+    if (!memeSequence(trs, ordreApplique)) baseTri = new Map(trs.map((tr, i) => [tr, i]));
+
+    const poids = new Map();
+    for (const { tr, donnee } of paires) {
+      poids.set(tr, poidsTri(donnee?.identifiant ? resultats.get(donnee.identifiant) : null));
+    }
+    const base = (tr) => (baseTri.has(tr) ? baseTri.get(tr) : Number.MAX_SAFE_INTEGER);
+
+    const voulu = trs.slice().sort((a, b) => {
+      const pa = poids.get(a) ?? 103;
+      const pb = poids.get(b) ?? 103;
+      // n/d, ⚠, ? et « pas encore lu » restent en bas dans les deux sens.
+      const inconnuA = pa > 5;
+      const inconnuB = pb > 5;
+      if (inconnuA !== inconnuB) return inconnuA ? 1 : -1;
+      if (pa !== pb) return inconnuA ? pa - pb : (pa - pb) * triRang;
+      return base(a) - base(b);
+    });
+
+    ecrireOrdre(tbody, trs, voulu);
+    ordreApplique = voulu;
+  }
+
   /** (Ré)applique toute notre UI ; sans effet si elle est déjà en place. */
   function rendre() {
     const hote = trouverTableau();
@@ -317,6 +424,9 @@
       td.textContent = '';
       td.append(badge(resultat, id));
     }
+
+    majEnteteTri(table);
+    appliquerTri(table, paires);
 
     return true;
   }

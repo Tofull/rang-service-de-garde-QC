@@ -42,6 +42,10 @@ automatiquement à l'ouverture de la page (~1 s par garderie, 3 en parallèle).
 - **Survol** : la phrase exacte du portail, la date de projection et la tranche
   d'âge de l'enfant à cette date.
 - **Clic** : ouvre la page officielle de l'indicateur dans un nouvel onglet.
+- **Clic sur l'en-tête « Indicateur de rang »** : trie le tableau par rang
+  (meilleurs rangs d'abord → l'inverse → retour à l'ordre du portail). Les lignes
+  sans rang lisible (`n/d`, `⚠`, `?`, pas encore relevées) restent en bas dans les
+  deux sens. Le tri ne porte que sur la page affichée, comme celui du portail.
 - **Bouton « Actualiser les rangs »** (au-dessus du tableau) : relit tout,
   en ignorant le cache.
 - **Icône de l'extension** : réglages (relevé automatique, durée de validité du
@@ -61,6 +65,7 @@ visites suivantes s'affichent instantanément.
 | Récupérer l'identifiant de chaque demande | Le tableau est le composant `<c-gu-tableau-donnees-sub-cmp>` ; ses lignes vivent dans sa propriété `listeDonnees`, qui contient le champ `identifiant` — exactement l'`?id=` de la page de rang. Aucun clic, aucune navigation intermédiaire. |
 | Lire le rang | `/parent/s/indicateur-de-rang?id=<identifiant>&modeList=true` est chargée dans une iframe cachée hors écran. La page étant de même origine, son texte est lisible directement. |
 | Extraire la valeur | La jauge affiche cinq étiquettes ; seule la bonne est suivie de « de la même tranche d'âge ». C'est cette accroche qu'utilise `src/rank.js` (variante anglaise incluse). |
+| Trier par le rang | Le tri natif du portail réordonne `listeDonnees` puis re-rend : il ignore une colonne ajoutée après coup. `src/page.js` déplace donc lui-même les `<tr>` et réapplique l'ordre à chaque rendu ; l'ordre du portail est mémorisé, il sert à départager les ex æquo et à revenir en arrière. |
 | Stocker | Le contexte de la page n'a pas accès aux API `chrome.*` : `src/content.js`, lui, y a accès et sert de passe-plat pour le cache, les réglages et les commandes de la popup. Les charges utiles transitent **en JSON**, car les objets réactifs de LWC ne survivent pas au clonage structuré de `postMessage`. |
 
 Une iframe est réutilisée d'une garderie à l'autre par « ouvrier », et la
@@ -72,7 +77,7 @@ concurrence est volontairement basse (3) pour ne pas marteler le serveur.
 manifest.json          permissions (storage) + déclaration des scripts
 src/dom.js       MAIN  traversée du shadow DOM, texte de l'arbre composé, attente active
 src/rank.js      MAIN  analyse de la page « Indicateur de rang »
-src/page.js      MAIN  orchestration, iframes, colonne et barre d'outils
+src/page.js      MAIN  orchestration, iframes, colonne, tri et barre d'outils
 src/content.js  isolé  stockage (chrome.storage) et relais des commandes de la popup
 popup/                 réglages et actions manuelles
 ```
