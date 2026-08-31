@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Rang garderies QC",
+  "version": "1.0.0",
+  "description": "Ajoute une colonne « Indicateur de rang » au tableau des demandes d'admission du portail des services de garde du Québec.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://portail-servicesgarde.gouv.qc.ca/*",
+    "https://www.portail-servicesgarde.gouv.qc.ca/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://portail-servicesgarde.gouv.qc.ca/parent/s/*",
+        "https://www.portail-servicesgarde.gouv.qc.ca/parent/s/*"
+      ],
+      "js": ["src/dom.js", "src/rank.js", "src/page.js"],
+      "world": "MAIN",
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://portail-servicesgarde.gouv.qc.ca/parent/s/*",
+        "https://www.portail-servicesgarde.gouv.qc.ca/parent/s/*"
+      ],
+      "js": ["src/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Rang garderies QC"
+  }
+}

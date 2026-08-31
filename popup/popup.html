@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Rang garderies QC</title>
+    <style>
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 14px;
+        font: 13px/1.45 "Segoe UI", system-ui, sans-serif;
+        color: #1c1c1c;
+      }
+      h1 { font-size: 14px; margin: 0 0 10px; }
+      fieldset { border: 1px solid #ddd; border-radius: 5px; margin: 0 0 12px; padding: 9px 10px; }
+      legend { padding: 0 4px; color: #555; font-size: 12px; }
+      label { display: flex; align-items: center; gap: 7px; margin: 5px 0; }
+      input[type="number"] { width: 62px; }
+      button {
+        font: inherit;
+        font-weight: 600;
+        padding: 6px 11px;
+        border: 1px solid #0f4c81;
+        border-radius: 4px;
+        background: #0f4c81;
+        color: #fff;
+        cursor: pointer;
+      }
+      button.secondaire { background: #fff; color: #0f4c81; }
+      button:disabled { opacity: 0.5; cursor: default; }
+      .actions { display: flex; gap: 8px; }
+      #etat { margin-top: 11px; color: #555; min-height: 32px; }
+      #etat[data-erreur="1"] { color: #b3261e; }
+    </style>
+  </head>
+  <body>
+    <h1>Rang garderies QC</h1>
+
+    <fieldset>
+      <legend>Réglages</legend>
+      <label><input type="checkbox" id="autoRun" /> Relever les rangs à l'ouverture de la page</label>
+      <label>Considérer un rang à jour pendant <input type="number" id="maxAgeHeures" min="0" max="720" /> h</label>
+      <label>Pages chargées en parallèle <input type="number" id="concurrence" min="1" max="6" /></label>
+    </fieldset>
+
+    <div class="actions">
+      <button id="actualiser">Actualiser</button>
+      <button id="viderCache" class="secondaire">Vider le cache</button>
+    </div>
+
+    <div id="etat"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
