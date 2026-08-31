@@ -18,6 +18,8 @@ Sans elle, connaître le rang d'un enfant demande, pour **chaque** garderie :
 ouvrir le menu de la ligne → *Consulter la demande d'admission* → *Voir l'indicateur de rang*.
 L'extension fait ce parcours en arrière-plan pour toutes les lignes à la fois.
 
+![Rendu résultant](demo-rendu.png)
+
 ## Installation
 
 1. Ouvre `chrome://extensions`.
